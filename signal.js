@@ -1,26 +1,60 @@
-function createSignal(value) {
+const signal = {
+  _value: null,
+  subscribers: null,
+  
+  subscribe(funcy) {
+    this.subscribers.add(funcy);
+    return () => this.subscribers.delete(funcy);
+  },
+  
+  notify() {
+    this.subscribers.forEach(funcy => funcy(this._value));
+  },
+};
 
-  const target = new Proxy(target, {
+let runningEffect = null;
 
-    set() {
-      this.target = value;
-      return 1;
-    },
-
-    get() {
-      console.log(this.target)
-      return this.target;
+function createSignal(firstTime) {
+  let newSignal = Object.create(signal);
+  newSignal._value = firstTime;
+  newSignal.subscribers = new Set();
+  
+  const proxy = new Proxy(newSignal, {
+    get(target, prop) {
+      if (runningEffect) {
+        target.subscribers.add(runningEffect);
+      }
+      return target._value;
     },
     
-  })
+    set(target, prop, newValue) {
 
+      if (target._value !== newValue) {
+        target._value = newValue;
+        target.notify();
+      }
+      return true;
+    }
+  });
+  
+  return proxy;
 }
 
-// function createEffect(func, dependants) {
-//
-// }
-//
+function createEffect(funcy) {
+  const newEffect = () => {
+    runningEffect = newEffect;
+    funcy();
+    runningEffect = null;
+ 
+  };
+  newEffect();
+  return newEffect;
+}
 
-const something = createSignal(0)
+const count = createSignal(0);
 
-
+createEffect(() => {
+  console.log(count.value);
+});
+count.value = 10;
+count.value = 20;
