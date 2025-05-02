@@ -1,60 +1,122 @@
-const signal = {
-  _value: null,
-  subscribers: null,
-  
-  subscribe(funcy) {
-    this.subscribers.add(funcy);
-    return () => this.subscribers.delete(funcy);
-  },
-  
-  notify() {
-    this.subscribers.forEach(funcy => funcy(this._value));
-  },
-};
+const context = [];
+const running = new Set();
 
-let runningEffect = null;
+export function createSignal(initialValue) {
+    let signal = {
+        value: initialValue,
+        subscribers: new Set(),
 
-function createSignal(firstTime) {
-  let newSignal = Object.create(signal);
-  newSignal._value = firstTime;
-  newSignal.subscribers = new Set();
-  
-  const proxy = new Proxy(newSignal, {
-    get(target, prop) {
-      if (runningEffect) {
-        target.subscribers.add(runningEffect);
-      }
-      return target._value;
-    },
-    
-    set(target, prop, newValue) {
+        hook(subscriber) {
+            this.subscribers.add(subscriber);
+        },
 
-      if (target._value !== newValue) {
-        target._value = newValue;
-        target.notify();
-      }
-      return true;
+        unhook(subscriber) {
+            this.subscribers.delete(subscriber);
+        },
+
+        publish(lastValue) {
+            this.subscribers.forEach(subscriber => subscriber.react());
+            for(const effect of running) {
+                effect.run(lastValue);
+                running.delete(effect);
+            }
+        },
     }
-  });
   
-  return proxy;
+    const proxy = new Proxy(signal, {
+        get(target, prop) {
+            if(prop === 'value') {
+                if(context.length) {
+                    target.subscribers.add(context[context.length - 1]);
+                }
+            }
+            return Reflect.get(target, prop);
+        },
+        
+        set(target, prop, value) {
+            if (prop === 'value' && target.value !== value) {
+                const lastValue = target.value;
+                Reflect.set(target, 'value', value);
+                target.publish(lastValue);
+            }
+            return true;
+        },
+    });
+
+    return proxy;
 }
 
-function createEffect(funcy) {
-  const newEffect = () => {
-    runningEffect = newEffect;
-    funcy();
-    runningEffect = null;
- 
-  };
-  newEffect();
-  return newEffect;
+export function createMemo(fn) {
+    const memo = {
+        fn,
+        stale: true,
+        value: fn(),
+        subscribers: new Set(),
+
+        hook(subscriber) {
+            this.subscribers.add(subscriber);
+        },
+
+        unhook(subscriber) {
+            this.subscribers.delete(subscriber);
+        },
+
+        publish() {
+            this.subscribers.forEach(subscriber => subscriber.react());
+        },
+
+        recompute(lastValue) {
+            this.value = this.fn(lastValue);
+            this.stale = false;
+        },
+
+        react() {
+            this.stale = true;
+            this.publish();
+        }
+    }
+
+    const proxy = new Proxy(memo, {
+        get(target, prop) {
+            if(prop === 'value') {
+                if(target.stale) {
+                    context.push(proxy);
+                    const lastValue = target.value;
+                    target.recompute(lastValue);
+                    context.pop();
+                }
+                if(context.length) {
+                    target.subscribers.add(context[context.length - 1]);
+                }
+            }
+            return Reflect.get(target, prop);
+        },
+        
+        set(target, prop, value) {
+            return Reflect.set(target, prop, value);
+        },
+
+    });
+
+    return proxy;
 }
 
-const count = createSignal(0);
+export function createEffect(fn) {
+    const effect = {
+        fn,
 
-createEffect(() => {
-  console.log(count.value);
-});
-count.value = 10;
-count.value = 20;
+        run(lastValue) {
+            context.push(effect);
+            this.fn(lastValue); 
+            context.pop();
+        },
+        
+        react() {
+            running.add(this);
+        },
+    };
+
+    effect.run();
+
+    return effect;
+}
