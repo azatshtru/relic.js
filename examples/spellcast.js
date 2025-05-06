@@ -1,5 +1,5 @@
 import { createSignal, createEffect, createMemo } from "../signal.js";
-import { forge } from "../compose.js";
+import { forge, cast, bind } from "../compose.js";
 
 function SpellcastHistory() {
     const spellThreshold = 5;
@@ -16,7 +16,14 @@ function SpellcastHistory() {
             () => history.value.map(x => forge("p").text(x).build()),
             forge('button').text('forget spellcast history').on('click', () => history.value = []).build(),
         ])
-        .style(() => style.value)
+        .style({
+            background: () => style.value.background,
+            color: () => style.value.color,
+        })
+        .class([
+            'foo', 'bar',
+            bind('baz', () => history.value.length > spellThreshold),
+        ])
         .build();
 }
 

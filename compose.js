@@ -23,7 +23,6 @@ export function forge(htmlTag) {
         },
 
         children(children) {
-            this.element.replaceChildren();
             for(const child of children) {
                 if(typeof child === 'function') {
                     const reactiveElement = document.createElement('div');
@@ -58,18 +57,35 @@ export function forge(htmlTag) {
         },
 
         style(style) {
-            if(typeof style === 'function') {
-                createEffect(() => {
-                    this.element.removeAttribute('style');
-                    Object.assign(this.element.style, style());
-                });
-            } else {
-                Object.assign(this.element.style, style);
+            for(const [key, value] of Object.entries(style)) {
+                if(typeof value === 'function') {
+                    createEffect(() => this.element.style[key] = value() ?? '');
+                } else {
+                    this.element.style[key] = value ?? '';
+                }
+            }
+            return this;
+        },
+
+        class(classList) {
+            for(const token of classList) {
+                if(Array.isArray(token)) {
+                    createEffect(() => {
+                        const [className, toggle] = token;
+                        this.element.classList.toggle(className, toggle());
+                    });
+                } else {
+                    this.element.classList.add(token);
+                }
             }
             return this;
         },
     };
 }
 
-const cast = {
+export const cast = {
+}
+
+export function bind(...args) {
+    return args;
 }
