@@ -1,5 +1,5 @@
 import { createSignal, createEffect, createMemo } from "../signal.js";
-import { forge } from "../compose.js";
+import { forge } from "../anvil.js";
 
 const body = document.body;
 

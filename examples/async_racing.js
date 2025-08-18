@@ -1,5 +1,5 @@
 import { createSignal, createEffect, createMemo } from '../signal.js'
-import { forge, cast, bind } from '../compose.js'
+import { forge, bind } from '../anvil.js'
 
 function Racecar(symbol, speed) {
     const distanceTravelled = createSignal(0);

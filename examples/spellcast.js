@@ -1,5 +1,5 @@
 import { createSignal, createEffect, createMemo } from "../signal.js";
-import { forge, cast, bind } from "../compose.js";
+import { forge, bind } from "../anvil.js";
 
 function SpellcastHistory() {
     const spellThreshold = 5;

@@ -99,9 +99,6 @@ export function forge(htmlTag) {
     };
 }
 
-export const cast = {
-}
-
 export function bind(...args) {
     return args;
 }

@@ -4,6 +4,7 @@ const running = new Set();
 export function createSignal(initialValue) {
     let signal = {
         value: initialValue,
+        prior: initialValue,
         subscribers: new Set(),
 
         hook(subscriber) {
@@ -14,10 +15,10 @@ export function createSignal(initialValue) {
             this.subscribers.delete(subscriber);
         },
 
-        publish(lastValue) {
+        publish() {
             this.subscribers.forEach(subscriber => subscriber.react());
             for(const effect of running) {
-                effect.run(lastValue);
+                effect.run();
                 running.delete(effect);
             }
         },
@@ -37,7 +38,8 @@ export function createSignal(initialValue) {
             if (prop === 'value' && target.value !== value) {
                 const lastValue = target.value;
                 Reflect.set(target, 'value', value);
-                target.publish(lastValue);
+                Reflect.set(target, 'prior', lastValue);
+                target.publish();
             }
             return true;
         },
@@ -105,9 +107,9 @@ export function createEffect(fn) {
     const effect = {
         fn,
 
-        run(lastValue) {
+        run() {
             context.push(effect);
-            this.fn(lastValue); 
+            this.fn(); 
             context.pop();
         },
         
