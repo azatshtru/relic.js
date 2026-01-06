@@ -1,5 +1,5 @@
 import { createSignal, createEffect, createMemo } from "../signal.js";
-import { forge } from "../anvil.js";
+import { forge, mount } from "../anvil.js";
 
 const body = document.body;
 
@@ -10,20 +10,16 @@ function Counter() {
     return forge("div")
         .children([
         forge("h1")
-            .text(() => count.value)
-            .build(),
+            .text(() => count.value),
         forge("button")
             .on("click", () => count.value += 1)
-            .text('+1')
-            .build(),
+            .text('+1'),
         forge("button")
             .on("click", () => count.value -= 1)
-            .text('-1')
-            .build(),
+            .text('-1'),
         forge("h2")
-            .text(() => double.value)
-            .build(),
-        ]).build();
+            .text(() => double.value),
+        ]);
 }
 
-body.appendChild(Counter());
+mount(Counter(), body);
